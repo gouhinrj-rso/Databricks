@@ -1,0 +1,17 @@
+# COMMAND ----------
+# %md
+# ## Tail-Normalized Metrics
+# COMMAND ----------
+# %python
+# Group by aircraft
+summary = full.groupby("aircraft_id").agg({
+    "work_order_number":"nunique",
+    "maintenance_action_number":"nunique",
+    "action_duration_hrs":"mean"
+}).rename(columns={
+    "work_order_number":"event_count",
+    "maintenance_action_number":"action_count",
+    "action_duration_hrs":"avg_action_hrs"
+}).sort_values("event_count", ascending=False)
+
+display(summary.head(10))  # Show top tails
