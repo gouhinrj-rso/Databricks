@@ -1,0 +1,59 @@
+# Databricks notebook source
+# COMMAND ----------
+# %md
+# # CBM+ & PANDA Case History Deep Dive
+#
+# This notebook:
+# - Loads `cbm_mx_event`, `cbm_mx_action`, and `lg_panda_hist_sil` (PANDA case history).
+# - Creates composite keys for linking datasets.
+# - Produces descriptive stats, tail-normalized insights, and visuals.
+#
+# ## How to Use
+# 1. Upload your CSVs to `/mnt/data/` or replace paths with Delta table names if registered.
+# 2. Run each cell in sequence.
+# 3. Modify filters (date ranges, aircraft IDs, failure modes) for focused analysis.
+#
+# Dependencies: pandas, matplotlib (already available in Databricks runtimes).
+#
+# COMMAND ----------
+# %python
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Load datasets
+cbm_event = spark.read.csv("/mnt/data/cbm_mx_event.csv", header=True, inferSchema=True).toPandas()
+cbm_action = spark.read.csv("/mnt/data/cbm_mx_action.csv", header=True, inferSchema=True).toPandas()
+panda = spark.read.csv("/mnt/data/lg_panda_hist_sil.csv", header=True, inferSchema=True).toPandas()
+
+# COMMAND ----------
+# %python
+# --- Create composite keys ---
+cbm_event["SN_JCN_PK"] = cbm_event["serial_number"].astype(str) + " " + cbm_event["job_control_number"].astype(str)
+panda["SN_JCN_PK"] = panda["SERIAL_NUMBER"].astype(str) + " " + panda["SBA_JCN"].astype(str)
+
+# Join cbm_mx_event + cbm_mx_action
+joined = cbm_event.merge(cbm_action, on="work_order_number", suffixes=("_event", "_action"))
+
+# Link with PANDA
+full = joined.merge(panda, on="SN_JCN_PK", how="left", suffixes=("", "_panda"))
+
+# Parse datetime fields
+date_cols = ["start_date_event","stop_date_event","start_date_action","stop_date_action",
+             "Case_Open_Date","MX_Completed_Date"]
+for col in date_cols:
+    if col in full.columns:
+        full[col] = pd.to_datetime(full[col], errors="coerce")
+
+# Compute durations
+full["event_duration_hrs"]  = (pd.to_datetime(full["stop_date_event"]) - pd.to_datetime(full["start_date_event"])).dt.total_seconds()/3600
+full["action_duration_hrs"] = (pd.to_datetime(full["stop_date_action"]) - pd.to_datetime(full["start_date_action"])).dt.total_seconds()/3600
+
+# COMMAND ----------
+# %md
+# ## Summary Stats
+# COMMAND ----------
+# %python
+print("Unique aircraft IDs:", full["aircraft_id"].nunique())
+print("Unique PANDA cases linked:", full["SBA_Case_ID"].nunique())
+print("Average event duration (hrs):", full["event_duration_hrs"].mean())
+print("Average action duration (hrs):", full["action_duration_hrs"].mean())
