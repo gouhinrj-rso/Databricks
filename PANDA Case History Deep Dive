@@ -1,0 +1,30 @@
+# COMMAND ----------
+# %md
+# ## PANDA Case History Deep Dive
+# COMMAND ----------
+# %python
+# Case status distribution
+status_counts = panda["Current_Case_Status"].value_counts()
+status_counts.plot(kind="bar", figsize=(8,4), title="Case Status Distribution")
+plt.show()
+
+# Failure modes (top 15)
+failure_modes = panda["Failure_Mode"].value_counts().head(15)
+failure_modes.plot(kind="bar", figsize=(10,4), title="Top 15 Failure Modes (PANDA)")
+plt.show()
+
+# Cases opened per month
+cases_opened = panda.set_index("Case_Open_Date").resample("M")["SBA_Case_ID"].count()
+cases_opened.plot(kind="line", marker="o", figsize=(10,4), title="PANDA Cases Opened per Month")
+plt.ylabel("Cases")
+plt.show()
+
+# Case cycle time (open → complete)
+panda["Case_Open_Date"] = pd.to_datetime(panda["Case_Open_Date"], errors="coerce")
+panda["MX_Completed_Date"] = pd.to_datetime(panda["MX_Completed_Date"], errors="coerce")
+panda["case_cycle_days"] = (panda["MX_Completed_Date"] - panda["Case_Open_Date"]).dt.days
+panda["case_cycle_days"].dropna().hist(bins=30, figsize=(8,4))
+plt.title("Case Cycle Time Distribution (Days)")
+plt.xlabel("Days from Open to Complete")
+plt.ylabel("Frequency")
+plt.show()
