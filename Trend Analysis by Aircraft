@@ -1,0 +1,20 @@
+# COMMAND ----------
+# %md
+# ## Trends per Aircraft (Top 3 busiest)
+# COMMAND ----------
+# %python
+# Events per month per aircraft
+events_monthly = full.set_index("start_date_event").groupby("aircraft_id").resample("M")["work_order_number"].nunique().reset_index()
+
+# Pick top 3 aircraft
+top_aircraft = summary.head(3).index.tolist()
+
+plt.figure(figsize=(10,4))
+for ac in top_aircraft:
+    data = events_monthly[events_monthly["aircraft_id"] == ac]
+    plt.plot(data["start_date_event"], data["work_order_number"], marker="o", label=ac)
+plt.title("Events per Month by Aircraft")
+plt.xlabel("Month")
+plt.ylabel("Events")
+plt.legend()
+plt.show()
