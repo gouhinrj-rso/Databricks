@@ -1,0 +1,111 @@
+# Databricks notebook
+
+# COMMAND ----------
+# %md
+# ## Imports and data loading
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import plotly.express as px
+
+# Adjust these paths if you’ve mounted or registered the data elsewhere
+cbm_event = pd.read_csv('/mnt/data/cbm_mx_event.csv',
+                        parse_dates=['start_date','stop_date'])
+cbm_action = pd.read_csv('/mnt/data/cbm_mx_action.csv',
+                         parse_dates=['start_date','stop_date'])
+panda      = pd.read_csv('/mnt/data/lg_panda_hist_sil.csv',
+                         parse_dates=['Case_Open_Date','MX_Completed_Date'])
+
+# COMMAND ----------
+# %md
+# ## cbm_mx_event analysis
+cbm_event['event_duration_hrs'] = (cbm_event['stop_date'] -
+                                   cbm_event['start_date']).dt.total_seconds()/3600
+print(cbm_event['event_duration_hrs'].describe())
+
+# Top equipment using NumPy
+vals, counts = np.unique(cbm_event['equipment_designator'], return_counts=True)
+top_mask = counts.argsort()[::-1][:10]
+print(list(zip(vals[top_mask], counts[top_mask])))
+
+# Interactive bar chart with Plotly
+fig = px.bar(x=vals[top_mask], y=counts[top_mask],
+             labels={'x':'Equipment Designator','y':'Count'},
+             title='Top 10 Equipment Designators')
+fig.show()
+
+# Events per month (Matplotlib)
+monthly_events = (cbm_event.set_index('start_date')
+                              .resample('M')['work_order_number']
+                              .count())
+plt.figure()
+plt.plot(monthly_events.index, monthly_events.values, marker='o')
+plt.title('Events per Month')
+plt.xlabel('Month')
+plt.ylabel('Events')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# COMMAND ----------
+# %md
+# ## cbm_mx_action analysis
+cbm_action['action_duration_hrs'] = (cbm_action['stop_date'] -
+                                     cbm_action['start_date']).dt.total_seconds()/3600
+print(cbm_action['action_duration_hrs'].describe())
+
+# Top action taken codes
+top_actions = cbm_action['action_taken_code'].value_counts().nlargest(10)
+px.bar(top_actions, x=top_actions.index, y=top_actions.values,
+       labels={'x':'Action Taken Code','y':'Count'},
+       title='Top Action Taken Codes').show()
+
+# Top malfunction codes using NumPy
+vals, counts = np.unique(cbm_action['how_malfunction_code'], return_counts=True)
+mask = counts.argsort()[::-1][:10]
+px.bar(x=vals[mask], y=counts[mask],
+       title='Top Malfunction Codes',
+       labels={'x':'How Malfunction Code','y':'Count'}).show()
+
+# Action duration histogram
+plt.figure()
+plt.hist(cbm_action['action_duration_hrs'].dropna(), bins=30)
+plt.title('Action Duration Distribution')
+plt.xlabel('Duration (hrs)')
+plt.ylabel('Frequency')
+plt.tight_layout()
+plt.show()
+
+# COMMAND ----------
+# %md
+# ## PANDA case history analysis
+status_counts = panda['Current_Case_Status'].value_counts()
+px.pie(values=status_counts.values, names=status_counts.index,
+       title='PANDA Case Status Distribution').show()
+
+# Top failure modes
+failure_counts = panda['Failure_Mode'].value_counts().nlargest(10)
+fig = px.bar(failure_counts, x=failure_counts.index, y=failure_counts.values,
+             labels={'x':'Failure Mode','y':'Cases'},
+             title='Top Failure Modes')
+fig.update_layout(xaxis_tickangle=-45)
+fig.show()
+
+# Case cycle time calculation and histogram
+panda['case_cycle_days'] = (panda['MX_Completed_Date'] -
+                            panda['Case_Open_Date']).dt.days
+print(panda['case_cycle_days'].describe())
+
+cycle = panda['case_cycle_days'].dropna()
+plt.figure()
+plt.hist(cycle, bins=30)
+plt.title('Case Cycle Time (days)')
+plt.xlabel('Cycle Time (days)')
+plt.ylabel('Frequency')
+plt.show()
+
+plt.figure()
+plt.boxplot(cycle)
+plt.title('Case Cycle Time Boxplot')
+plt.ylabel('Days')
+plt.show()
