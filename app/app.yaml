@@ -1,0 +1,23 @@
+command:
+  - "streamlit"
+  - "run"
+  - "app.py"
+  - "--server.port=8000"
+  - "--server.address=0.0.0.0"
+  - "--server.headless=true"
+
+env:
+  - name: "STREAMLIT_BROWSER_GATHER_USAGE_STATS"
+    value: "false"
+  - name: "DATABRICKS_WAREHOUSE_ID"
+    valueFrom: "databricks_warehouse_id"
+  - name: "CBM_CATALOG"
+    value: "main"
+  - name: "CBM_SCHEMA"
+    value: "bld_a4l_restricted_analytics"
+  - name: "CBM_EVENT_TABLE"
+    value: "cbm_mx_event"
+  - name: "CBM_ACTION_TABLE"
+    value: "cbm_mx_action"
+  - name: "PANDA_TABLE"
+    value: "lg_panda_hist_sil"
